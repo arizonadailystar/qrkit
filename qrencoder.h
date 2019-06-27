@@ -3,6 +3,7 @@
 #include <string>
 #include <cstdint>
 #include "message.h"
+#include "bitstream.h"
 
 enum ECL {
   L = 0,
@@ -17,8 +18,15 @@ enum Encoding {
   Byte = 4,
 };
 
+struct Block {
+  uint8_t *data;
+  uint8_t *ec;
+  uint32_t dataLen;
+};
+
 class QREncoder {
  public:
+  QREncoder();
   Message encode(std::string msg, ECL ecl);
 
  private:
@@ -29,7 +37,11 @@ class QREncoder {
                           int *g1Blocks, int *g1DataPerBlock,
                           int *g2Blocks, int *g2DataPerBlock);
   int determineCCILength(int version, Encoding encoding);
-  void encodeNumeric(std::string msg, Message *message);
-  void encodeAlpha(std::string msg, Message *message);
-  void encodeByte(std::string msg, Message *message);
+  void encodeNumeric(std::string msg, BitStream *stream);
+  void encodeAlpha(std::string msg, BitStream *stream);
+  void encodeByte(std::string msg, BitStream *stream);
+  void reedSolomon(uint8_t *data, int numEC, int numData, uint8_t *ec);
+
+  uint8_t exp2num[256];
+  uint8_t num2exp[256];
 };

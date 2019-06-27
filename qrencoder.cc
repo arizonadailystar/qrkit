@@ -1,7 +1,24 @@
 #include "qrencoder.h"
-#include "modes.h"
+#include "tables.h"
 #include <cstring>
 #include <iostream>
+
+QREncoder::QREncoder() {
+  for (int i = 0; i < 256; i++) {
+    if (i == 0) {
+      exp2num[i] = 1;
+    } else {
+      int val = exp2num[i - 1] * 2;
+      if (val > 255) {
+        val ^= 285;
+      }
+      exp2num[i] = val;
+    }
+    if (i != 255) {
+      num2exp[exp2num[i]] = i;
+    }
+  }
+}
 
 Message QREncoder::encode(std::string msg, ECL ecl) {
   Message message;
@@ -13,31 +30,84 @@ Message QREncoder::encode(std::string msg, ECL ecl) {
               << std::endl;
     return message;
   }
-  ecl = determineOptimumECL(ecl, msg.length(), encoding, version);
+  // temp disabled
+//  ecl = determineOptimumECL(ecl, msg.length(), encoding, version);
 
-  int ecPerBlock, g1Blocks, g1DataPerBlock, g2Blocks, g2DataPerBlock;
+  int ecPerBlock = 0;
+  int g1Blocks = 0;
+  int g1DataPerBlock = 0;
+  int g2Blocks = 0;
+  int g2DataPerBlock = 0;
   determineBlockInfo(version, ecl, &ecPerBlock, &g1Blocks, &g1DataPerBlock,
                      &g2Blocks, &g2DataPerBlock);
 
-  message.data = new uint8_t[g1Blocks * g1DataPerBlock +
-      g2Blocks * g2DataPerBlock];
+  BitStream stream;
+  int totalData = g1Blocks * g1DataPerBlock + g2Blocks + g2DataPerBlock;
+  stream.data = new uint8_t[totalData];
 
   // add mode indicator
-  message.write(encoding, 4);
-  message.write(msg.length(), determineCCILength(version, encoding));
+  stream.write(encoding, 4);
+  stream.write(msg.length(), determineCCILength(version, encoding));
   switch (encoding) {
     case Encoding::Numeric:
-      encodeNumeric(msg, &message);
+      encodeNumeric(msg, &stream);
       break;
     case Encoding::Alpha:
-      encodeAlpha(msg, &message);
+      encodeAlpha(msg, &stream);
       break;
     case Encoding::Byte:
-      encodeByte(msg, &message);
+      encodeByte(msg, &stream);
       break;
   }
-  message.padToByte();
-  message.padToCapacity(g1Blocks * g1DataPerBlock + g2Blocks * g2DataPerBlock);
+  stream.padToByte();
+  stream.padToCapacity(totalData);
+
+  int numBlocks = g1Blocks + g2Blocks;
+  Block *blocks = new Block[numBlocks];
+  for (int i = 0; i < g1Blocks; i++) {
+    blocks[i].dataLen = g1DataPerBlock;
+    blocks[i].data = new uint8_t[g1DataPerBlock];
+    memcpy(blocks[i].data, stream.data + i * g1DataPerBlock, g1DataPerBlock);
+    blocks[i].ec = new uint8_t[ecPerBlock];
+  }
+  for (int i = 0; i < g2Blocks; i++) {
+    blocks[g1Blocks + i].dataLen = g2DataPerBlock;
+    blocks[g1Blocks + i].data = new uint8_t[g2DataPerBlock];
+    memcpy(blocks[g1Blocks + i].data, stream.data +
+           g1Blocks * g1DataPerBlock + i * g2DataPerBlock, g2DataPerBlock);
+    blocks[g1Blocks + i].ec = new uint8_t[ecPerBlock];
+  }
+
+  delete [] stream.data;
+
+  message.length = 0;
+  for (int i = 0; i < g1Blocks + g2Blocks; i++) {
+    reedSolomon(blocks[i].data, ecPerBlock, blocks[i].dataLen, blocks[i].ec);
+    message.length += blocks[i].dataLen + ecPerBlock;
+  }
+
+  message.data = new uint8_t[message.length];
+  int dataLen = g1DataPerBlock > g2DataPerBlock ? g1DataPerBlock :
+      g2DataPerBlock;
+  int pos = 0;
+  for (int i = 0; i < dataLen; i++) {
+    for (int j = 0; j < numBlocks; j++) {
+      if (i < blocks[j].dataLen) {
+        message.data[pos++] = blocks[j].data[i];
+      }
+    }
+  }
+  for (int i = 0; i < ecPerBlock; i++) {
+    for (int j = 0; j < numBlocks; j++) {
+      message.data[pos++] = blocks[j].ec[i];
+    }
+  }
+  for (int i = 0; i < numBlocks; i++) {
+    delete [] blocks[i].data;
+    delete [] blocks[i].ec;
+  }
+
+  message.version = version;
 
   return message;
 }
@@ -99,20 +169,18 @@ void QREncoder::determineBlockInfo(int version, ECL ecl, int *ecPerBlock,
 }
 
 int QREncoder::determineCCILength(int version, Encoding encoding) {
-  if (version < 9) {
-    switch (encoding) {
-      case Encoding::Numeric:
-        return 10;
-      case Encoding::Alpha:
-        return 9;
-      case Encoding::Byte:
-        return 8;
-    }
+  switch (encoding) {
+    case Encoding::Numeric:
+      return 10;
+    case Encoding::Alpha:
+      return 9;
+    case Encoding::Byte:
+      return 8;
   }
   return 8;
 }
 
-void QREncoder::encodeNumeric(std::string msg, Message *message) {
+void QREncoder::encodeNumeric(std::string msg, BitStream *stream) {
   for (int i = 0; i < msg.length(); i += 3) {
     int number = 0;
     for (int j = 0; j < 3 && i + j < msg.length(); j++) {
@@ -121,17 +189,17 @@ void QREncoder::encodeNumeric(std::string msg, Message *message) {
     }
     if (number < 100) {
       if (number < 10) {
-        message->write(number, 4);
+        stream->write(number, 4);
       } else {
-        message->write(number, 7);
+        stream->write(number, 7);
       }
     } else {
-      message->write(number, 10);
+      stream->write(number, 10);
     }
   }
 }
 
-void QREncoder::encodeAlpha(std::string msg, Message *message) {
+void QREncoder::encodeAlpha(std::string msg, BitStream *stream) {
   static const char *special = " $%*+-./:";
 
   for (int i = 0; i < msg.length(); i += 2) {
@@ -147,15 +215,36 @@ void QREncoder::encodeAlpha(std::string msg, Message *message) {
       }
     }
     if (i == msg.length() - 1) {
-      message->write(code, 6);
+      stream->write(code, 6);
     } else {
-      message->write(code, 11);
+      stream->write(code, 11);
     }
   }
 }
 
-void QREncoder::encodeByte(std::string msg, Message *message) {
+void QREncoder::encodeByte(std::string msg, BitStream *stream) {
   for (int i = 0; i < msg.length(); i++) {
-    message->write(msg[i], 8);
+    stream->write(msg[i], 8);
+  }
+}
+
+void QREncoder::reedSolomon(uint8_t *data, int numEC, int numData,
+                            uint8_t *ec) {
+  const uint8_t *generator = exponents[numEC];
+  uint8_t terms[numData];
+  for (int i = 0; i < numData; i++) {
+    terms[i] = data[i];
+  }
+
+  for (int cycle = 0; cycle < numData; cycle++) {
+    uint8_t term = num2exp[terms[0]];
+    for (int i = 0; i < numData - 1; i++) {
+      uint8_t val = i < numEC ? exp2num[(generator[i] + term) % 255] : 0;
+      terms[i] = terms[i + 1] ^ val;
+    }
+    terms[numData - 1] = 0;
+  }
+  for (int i = 0; i < numEC; i++){
+    ec[i] = terms[i];
   }
 }

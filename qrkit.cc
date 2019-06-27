@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstdint>
 #include "qrencoder.h"
+#include "qrgrid.h"
 
 const char *argp_program_version = "qrkit 0.5";
 const char *argp_program_bug_address = "skasun@tucson.com";
@@ -93,14 +94,14 @@ int main(int argc, char **argv) {
   QREncoder encoder;
   Message msg = encoder.encode(arguments.message, arguments.ecl);
 
-  std::cout << arguments.message << std::endl;
-  for (int i = 0; i < msg.length; i++) {
-    printf("%02x ", msg.data[i]);
-    if ((i & 15) == 15) {
-      printf("\n");
+  QRGrid grid;
+  Bitmap bitmap = grid.generate(msg);
+
+  printf("bitmap is %dx%d\n", bitmap.size, bitmap.size);
+  for (int y = 0; y < bitmap.size; y++) {
+    for (int x = 0; x < bitmap.size; x++) {
+      printf("%c", bitmap.data[y * bitmap.size + x] ? 'X' : ' ');
     }
-  }
-  if (((msg.length - 1) & 15) != 15) {
     printf("\n");
   }
 }
