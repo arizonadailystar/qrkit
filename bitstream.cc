@@ -21,6 +21,15 @@ void BitStream::padToByte() {
 }
 
 void BitStream::padToCapacity(uint32_t capacity) {
+  // first add up to 4 terminator bits.
+  int usedBits = length * 8 + (8 - bitPos);
+  int terminatorBits = 4;
+  if (usedBits + terminatorBits > capacity * 8) {
+    terminatorBits = capacity * 8 - usedBits;
+  }
+  write(0, terminatorBits);
+  // now pad to next byte
+  padToByte();
   bool first = true;
   while (length < capacity) {
     data[length++] = first ? 236 : 17;

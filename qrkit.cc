@@ -1,8 +1,10 @@
 #include <argp.h>
 #include <iostream>
 #include <cstdint>
+#include <png.h>
 #include "qrencoder.h"
 #include "qrgrid.h"
+#include "colors.h"
 
 const char *argp_program_version = "qrkit 0.5";
 const char *argp_program_bug_address = "skasun@tucson.com";
@@ -97,11 +99,44 @@ int main(int argc, char **argv) {
   QRGrid grid;
   Bitmap bitmap = grid.generate(msg);
 
-  printf("bitmap is %dx%d\n", bitmap.size, bitmap.size);
-  for (int y = 0; y < bitmap.size; y++) {
-    for (int x = 0; x < bitmap.size; x++) {
-      printf("%c", bitmap.data[y * bitmap.size + x] ? 'X' : ' ');
-    }
-    printf("\n");
+
+  FILE *f = fopen("qr.png", "wb");
+
+  png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL,
+                                                NULL, NULL);
+  png_infop info_ptr = png_create_info_struct(png_ptr);
+  if (setjmp(png_jmpbuf(png_ptr))) {
+    printf("fail\n");
+    return 0;
   }
+  png_init_io(png_ptr, f);
+
+  png_bytep row_pointers[bitmap.size];
+  for (int row = 0; row < bitmap.size; row++) {
+    row_pointers[row] = new uint8_t[bitmap.size];
+    for (int x = 0; x < bitmap.size; x++) {
+      switch (bitmap.data[row * bitmap.size + x]) {
+        case Color::Empty:
+        case Color::CodeOff:
+        case Color::BG:
+          row_pointers[row][x] = 0xff;
+          break;
+        default:
+          row_pointers[row][x] = 0;
+          break;
+      }
+    }
+  }
+
+
+  png_set_IHDR(png_ptr, info_ptr, bitmap.size, bitmap.size,
+               8, PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_NONE,
+               PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+  png_write_info(png_ptr, info_ptr);
+
+  png_write_image(png_ptr, row_pointers);
+
+  png_write_end(png_ptr, NULL);
+
+  fclose(f);
 }

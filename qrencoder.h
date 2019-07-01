@@ -41,7 +41,8 @@ class QREncoder {
   void encodeAlpha(std::string msg, BitStream *stream);
   void encodeByte(std::string msg, BitStream *stream);
   void reedSolomon(uint8_t *data, int numEC, int numData, uint8_t *ec);
+  uint8_t *createGenerator(int numEC);
 
-  uint8_t exp2num[256];
-  uint8_t num2exp[256];
+  uint8_t glog[256];
+  uint8_t gexp[512];
 };

@@ -4,18 +4,31 @@
 #include <iostream>
 
 QREncoder::QREncoder() {
-  for (int i = 0; i < 256; i++) {
-    if (i == 0) {
-      exp2num[i] = 1;
-    } else {
-      int val = exp2num[i - 1] * 2;
-      if (val > 255) {
-        val ^= 285;
+  uint8_t pinit = 0, p1 = 1, p2 = 0, p3 = 0,
+          p4 = 0, p5 = 0, p6 = 0, p7 = 0, p8 = 0;
+  gexp[0] = 1;
+  gexp[255] = 1;
+  glog[0] = 0;
+  for (int i = 1; i < 256; i++) {
+    pinit = p8;
+    p8 = p7;
+    p7 = p6;
+    p6 = p5;
+    p5 = p4 ^ pinit;
+    p4 = p3 ^ pinit;
+    p3 = p2 ^ pinit;
+    p2 = p1;
+    p1 = pinit;
+    gexp[i] = p1 + p2 * 2 + p3 * 4 + p4 * 8 + p5 * 16 + p6 * 32 + p7 * 64 +
+        p8 * 128;
+    gexp[i + 255] = gexp[i];
+  }
+  for (int i = 1; i < 256; i++) {
+    for (int z = 0; z < 256; z++) {
+      if (gexp[z] == i) {
+        glog[i] = z;
+        break;
       }
-      exp2num[i] = val;
-    }
-    if (i != 255) {
-      num2exp[exp2num[i]] = i;
     }
   }
 }
@@ -30,8 +43,7 @@ Message QREncoder::encode(std::string msg, ECL ecl) {
               << std::endl;
     return message;
   }
-  // temp disabled
-//  ecl = determineOptimumECL(ecl, msg.length(), encoding, version);
+  ecl = determineOptimumECL(ecl, msg.length(), encoding, version);
 
   int ecPerBlock = 0;
   int g1Blocks = 0;
@@ -59,7 +71,6 @@ Message QREncoder::encode(std::string msg, ECL ecl) {
       encodeByte(msg, &stream);
       break;
   }
-  stream.padToByte();
   stream.padToCapacity(totalData);
 
   int numBlocks = g1Blocks + g2Blocks;
@@ -86,7 +97,7 @@ Message QREncoder::encode(std::string msg, ECL ecl) {
     message.length += blocks[i].dataLen + ecPerBlock;
   }
 
-  message.data = new uint8_t[message.length];
+  message.data = new uint8_t[message.length + 1];
   int dataLen = g1DataPerBlock > g2DataPerBlock ? g1DataPerBlock :
       g2DataPerBlock;
   int pos = 0;
@@ -102,12 +113,19 @@ Message QREncoder::encode(std::string msg, ECL ecl) {
       message.data[pos++] = blocks[j].ec[i];
     }
   }
+  message.data[pos++] = 0;  // pad with a 0
+
   for (int i = 0; i < numBlocks; i++) {
     delete [] blocks[i].data;
     delete [] blocks[i].ec;
   }
+  message.length *= 8;
 
   message.version = version;
+  message.ecl = ecl;
+  if (version > 1) {
+    message.length += 7;  // 7 padding bits
+  }
 
   return message;
 }
@@ -187,7 +205,7 @@ void QREncoder::encodeNumeric(std::string msg, BitStream *stream) {
       number *= 10;
       number += msg[i + j] - '0';
     }
-    if (number < 100) {
+    if (number < 100 && i + 3 >= msg.length()) {
       if (number < 10) {
         stream->write(number, 4);
       } else {
@@ -230,21 +248,67 @@ void QREncoder::encodeByte(std::string msg, BitStream *stream) {
 
 void QREncoder::reedSolomon(uint8_t *data, int numEC, int numData,
                             uint8_t *ec) {
-  const uint8_t *generator = exponents[numEC];
-  uint8_t terms[numData];
-  for (int i = 0; i < numData; i++) {
-    terms[i] = data[i];
-  }
+  uint8_t *generator = createGenerator(numEC);
+  uint8_t terms[numEC + 1];
+  memset(terms, 0, numEC + 1);
 
-  for (int cycle = 0; cycle < numData; cycle++) {
-    uint8_t term = num2exp[terms[0]];
-    for (int i = 0; i < numData - 1; i++) {
-      uint8_t val = i < numEC ? exp2num[(generator[i] + term) % 255] : 0;
-      terms[i] = terms[i + 1] ^ val;
+  for (int i = 0; i < numData; i++) {
+    uint8_t term = data[i] ^ terms[numEC - 1];
+    for (int j = numEC - 1; j > 0; j--) {
+      uint8_t val = 0;
+      if (generator[j] && term) {
+        val = gexp[glog[generator[j]] + glog[term]];
+      }
+      terms[j] = terms[j - 1] ^ val;
     }
-    terms[numData - 1] = 0;
+    terms[0] = 0;
+    if (generator[0] && term) {
+      terms[0] = gexp[glog[generator[0]] + glog[term]];
+    }
   }
-  for (int i = 0; i < numEC; i++){
-    ec[i] = terms[i];
+  delete [] generator;
+  int curEC = 0;
+  for (int i = numEC - 1; i >= 0; i--) {
+    ec[curEC++] = terms[i];
   }
+}
+
+uint8_t *QREncoder::createGenerator(int numEC) {
+  uint8_t *poly = new uint8_t[numEC * 2];
+  memset(poly, 0, numEC * 2);
+  poly[0] = 1;
+
+  uint8_t *q = new uint8_t[numEC * 2];
+  uint8_t *temp = new uint8_t[numEC * 4];
+  uint8_t *dest = new uint8_t[numEC * 2];
+
+  for (int i = 0; i < numEC; i++) {
+    memset(q, 0, numEC * 2);
+    q[0] = gexp[i];
+    q[1] = 1;
+
+    memset(dest, 0, numEC * 2);
+    for (int j = 0; j < numEC * 2; j++) {
+      memset(temp + numEC * 2, 0, numEC * 2);
+      for (int k = 0; k < numEC * 2; k++) {
+        if (poly[k] && q[j]) {
+          temp[k] = gexp[glog[poly[k]] + glog[q[j]]];
+        } else {
+          temp[k] = 0;
+        }
+      }
+      for (int k = numEC * 4 - 1; k >= j; k--) {
+        temp[k] = temp[k - j];
+      }
+      memset(temp, 0, j);
+      for (int k = 0; k < numEC * 2; k++) {
+        dest[k] ^= temp[k];
+      }
+    }
+    memcpy(poly, dest, numEC * 2);
+  }
+  delete [] q;
+  delete [] temp;
+  delete [] dest;
+  return poly;
 }
