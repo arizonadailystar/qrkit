@@ -1,3 +1,5 @@
+/** @copyright 2019 Sean Kasun */
+
 #pragma once
 
 static const struct {

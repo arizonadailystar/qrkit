@@ -1,3 +1,5 @@
+/** @copyright 2019 Sean Kasun */
+
 #include "qrencoder.h"
 #include "tables.h"
 #include <cstring>

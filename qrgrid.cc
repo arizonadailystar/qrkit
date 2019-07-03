@@ -1,3 +1,5 @@
+/** @copyright 2019 Sean Kasun */
+
 #include "qrgrid.h"
 #include "colors.h"
 #include <cstring>

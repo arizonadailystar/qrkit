@@ -1,3 +1,5 @@
+/** @copyright 2019 Sean Kasun */
+
 #include "bitstream.h"
 
 void BitStream::write(uint32_t value, int bits) {
