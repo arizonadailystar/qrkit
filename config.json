@@ -3,8 +3,10 @@
   "padding": 60,
   "scale": 20,
   "background": "#ffffff",
-  "pattern": "#000000",
-  "align": "#000000",
-  "code": "#000000",
-  "style": "none"
+  "pattern": "#8888aa",
+  "align": "#880088",
+  "code": "#222244",
+  "style": "hvdots",
+  "patstyle": "rounded",
+  "corners": ["tl", "br"]
 }

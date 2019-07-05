@@ -52,18 +52,50 @@ Config::Config(std::shared_ptr<JSONData> json) {
     std::string style = json->at("style")->asString();
     std::transform(style.begin(), style.end(), style.begin(), ::tolower);
     if (style == "none") {
-      style = Style::None;
+      this->style = Style::None;
     } else if (style == "dots") {
-      style = Style::Dots;
+      this->style = Style::Dots;
     } else if (style == "hdots") {
-      style = Style::HDots;
+      this->style = Style::HDots;
     } else if (style == "vdots") {
-      style = Style::VDots;
+      this->style = Style::VDots;
     } else if (style == "hvdots") {
-      style = Style::HVDots;
+      this->style = Style::HVDots;
     } else {
       std::cerr << "Style must be one of 'none', 'dots', 'hdots', 'vdots',"
-               " or hhvdots'" << std::endl;
+               " or 'hhvdots'" << std::endl;
+    }
+  }
+  if (json->has("patstyle")) {
+    std::string style = json->at("patstyle")->asString();
+    std::transform(style.begin(), style.end(), style.begin(), ::tolower);
+    if (style == "none") {
+      pattern = PatternStyle::None;
+    } else if (style == "rounded") {
+      pattern = PatternStyle::Rounded;
+    } else if (style == "circle") {
+      pattern = PatternStyle::Circle;
+    } else {
+      std::cerr << "Pattern Style must be one of 'none', 'rounded',"
+                " or 'circle'" << std::endl;
+    }
+  }
+  if (pattern == PatternStyle::Rounded && json->has("corners")) {
+    auto array = json->at("corners");
+    for (int i = 0; i < array->length(); i++) {
+      std::string c = array->at(i)->asString();
+      std::transform(c.begin(), c.end(), c.begin(), ::tolower);
+      if (c == "tl") {
+        corners |= Corner::TL;
+      } else if (c == "tr") {
+        corners |= Corner::TR;
+      } else if (c == "bl") {
+        corners |= Corner::BL;
+      } else if (c == "br") {
+        corners |= Corner::BR;
+      } else {
+        std::cerr << "Corners must be 'tl', 'tr', 'bl', or 'br'" << std::endl;
+      }
     }
   }
 }

@@ -58,6 +58,7 @@ Message QREncoder::encode(std::string msg, ECL ecl) {
   BitStream stream;
   int totalData = g1Blocks * g1DataPerBlock + g2Blocks + g2DataPerBlock;
   stream.data = new uint8_t[totalData];
+  memset(stream.data, 0, totalData);
 
   // add mode indicator
   stream.write(encoding, 4);
@@ -82,6 +83,7 @@ Message QREncoder::encode(std::string msg, ECL ecl) {
     blocks[i].data = new uint8_t[g1DataPerBlock];
     memcpy(blocks[i].data, stream.data + i * g1DataPerBlock, g1DataPerBlock);
     blocks[i].ec = new uint8_t[ecPerBlock];
+    memset(blocks[i].ec, 0, ecPerBlock);
   }
   for (int i = 0; i < g2Blocks; i++) {
     blocks[g1Blocks + i].dataLen = g2DataPerBlock;
@@ -89,6 +91,7 @@ Message QREncoder::encode(std::string msg, ECL ecl) {
     memcpy(blocks[g1Blocks + i].data, stream.data +
            g1Blocks * g1DataPerBlock + i * g2DataPerBlock, g2DataPerBlock);
     blocks[g1Blocks + i].ec = new uint8_t[ecPerBlock];
+    memset(blocks[g1Blocks + i].ec, 0, ecPerBlock);
   }
 
   delete [] stream.data;
@@ -100,6 +103,7 @@ Message QREncoder::encode(std::string msg, ECL ecl) {
   }
 
   message.data = new uint8_t[message.length + 1];
+  memset(message.data, 0, message.length + 1);
   int dataLen = g1DataPerBlock > g2DataPerBlock ? g1DataPerBlock :
       g2DataPerBlock;
   int pos = 0;
@@ -281,8 +285,11 @@ uint8_t *QREncoder::createGenerator(int numEC) {
   poly[0] = 1;
 
   uint8_t *q = new uint8_t[numEC * 2];
+  memset(q, 0, numEC * 2);
   uint8_t *temp = new uint8_t[numEC * 4];
+  memset(temp, 0, numEC * 4);
   uint8_t *dest = new uint8_t[numEC * 2];
+  memset(dest, 0, numEC * 2);
 
   for (int i = 0; i < numEC; i++) {
     memset(q, 0, numEC * 2);

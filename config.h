@@ -6,12 +6,25 @@
 #include "json.h"
 #include "qrencoder.h"
 
-enum Style {
+enum class Style {
   None = 0,
   Dots = 1,
   HDots = 2,
   VDots = 3,
   HVDots = 4,
+};
+
+enum class PatternStyle {
+  None = 0,
+  Rounded = 1,
+  Circle = 2,
+};
+
+enum Corner {
+  TL = 1,
+  TR = 2,
+  BL = 4,
+  BR = 8,
 };
 
 class Config {
@@ -26,6 +39,8 @@ class Config {
   uint32_t alignColor = 0x000000;
   uint32_t codeColor = 0x000000;
   Style style = Style::None;
+  PatternStyle pattern = PatternStyle::None;
+  uint8_t corners = 0;
 
  private:
   uint32_t parseColor(const std::string &s);
