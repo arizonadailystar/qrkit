@@ -5,9 +5,10 @@ all: qrkit
 
 qrkit: qrkit.o qrencoder.o qrgrid.o bitstream.o config.o decorator.o json.o
 	$(CXX) $(CXXFLAGS) -o $@ -lpng $^
+	mv $@ ..
 
 %.o: %.cc
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 clean:
-	rm -f *.o qrkit
+	rm -f *.o

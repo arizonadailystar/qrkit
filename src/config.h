@@ -38,6 +38,7 @@ class Config {
   uint32_t patternColor = 0x000000;
   uint32_t alignColor = 0x000000;
   uint32_t codeColor = 0x000000;
+  uint32_t iconColor = 0x000000;
   Style style = Style::None;
   PatternStyle pattern = PatternStyle::None;
   uint8_t corners = 0;

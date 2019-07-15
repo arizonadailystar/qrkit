@@ -8,7 +8,7 @@
 #include <cmath>
 
 void Decorator::decorate(const Bitmap &bitmap, const Config &config,
-                         const char *filename) {
+                         const char *embed, const char *filename) {
 
   int width = config.scale * bitmap.size + config.padding * 2;
   int height = config.scale * bitmap.size + config.padding * 2;
@@ -88,6 +88,15 @@ void Decorator::decorate(const Bitmap &bitmap, const Config &config,
               width * 4 + config.padding * 4, width * 4,
               config.patternColor, config.backgroundColor,
               config.scale, config.pattern, config.corners);
+
+
+  if (embed != nullptr) {
+    embedIcon(embed, pixels + (8 * config.scale + config.padding) * width * 4 +
+              (8 * config.scale + config.padding) * 4, width * 4,
+              config.iconColor, config.backgroundColor,
+              (bitmap.size - 16) * config.scale);
+  }
+
 
   auto png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr,
                                          nullptr, nullptr);
@@ -432,3 +441,74 @@ uint32_t Decorator::blend(uint32_t from, uint32_t to, double ratio) {
       static_cast<int>(b * 255);
 }
 
+void Decorator::embedIcon(const char *embed, uint8_t *out, int stride,
+                          uint32_t color, uint32_t background, uint32_t scale) {
+  auto png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr,
+                                        nullptr, nullptr);
+  auto info_ptr = png_create_info_struct(png_ptr);
+  if (setjmp(png_jmpbuf(png_ptr))) {
+    std::cerr << "PNG Failure" << std::endl;
+    return;
+  }
+  FILE *f = fopen(embed, "rb");
+  if (!f) {
+    std::cerr << "Failed to read " << embed << std::endl;
+    return;
+  }
+  png_init_io(png_ptr, f);
+  png_read_info(png_ptr, info_ptr);
+
+  uint32_t width, height;
+  int bit_depth, color_type;
+  png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,
+               nullptr, nullptr, nullptr);
+  if (color_type == PNG_COLOR_TYPE_PALETTE) {
+   png_set_expand(png_ptr);
+  }
+  if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8) {
+    png_set_expand(png_ptr);
+  }
+  if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS)) {
+    png_set_expand(png_ptr);
+  }
+  if (bit_depth == 16) {
+    png_set_strip_16(png_ptr);
+  }
+  if (color_type == PNG_COLOR_TYPE_GRAY ||
+      color_type == PNG_COLOR_TYPE_GRAY_ALPHA) {
+    png_set_gray_to_rgb(png_ptr);
+  }
+  png_bytep row_pointers[height];
+  png_read_update_info(png_ptr, info_ptr);
+  uint32_t rowbytes = png_get_rowbytes(png_ptr, info_ptr);
+  uint8_t *imagedata = new uint8_t[rowbytes * height];
+  for (int i = 0; i < height; i++) {
+    row_pointers[i] = imagedata + i * rowbytes;
+  }
+  png_read_image(png_ptr, row_pointers);
+  png_read_end(png_ptr, nullptr);
+  png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+  fclose(f);
+
+  double xlate = (double)width / scale;
+  printf("width: %d, height: %d, xlate: %f, scale: %d\n",
+         width, height, xlate, scale);
+
+  for (int y = 0; y < scale; y++) {
+    int src = (int)(y * xlate) * rowbytes;
+    int dest = y * stride;
+    for (int x = 0; x < scale; x++) {
+      int sx = (int)(x * xlate) * 4;
+      if (imagedata[src + sx + 3] == 0xff) {
+        uint32_t c = blend(color, background, imagedata[src + sx] / 255.0);
+        out[dest++] = c >> 16;
+        out[dest++] = (c >> 8) & 0xff;
+        out[dest++] = c & 0xff;
+        out[dest++] = 0xff;
+      } else {
+        dest += 4;
+      }
+    }
+  }
+  delete [] imagedata;
+}

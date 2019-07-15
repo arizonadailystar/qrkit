@@ -48,6 +48,9 @@ Config::Config(std::shared_ptr<JSONData> json) {
   if (json->has("code")) {
     codeColor = parseColor(json->at("code")->asString());
   }
+  if (json->has("icon")) {
+    iconColor = parseColor(json->at("icon")->asString());
+  }
   if (json->has("style")) {
     std::string style = json->at("style")->asString();
     std::transform(style.begin(), style.end(), style.begin(), ::tolower);

@@ -7,10 +7,12 @@
 class Decorator {
  public:
   static void decorate(const Bitmap &bitmap, const Config &config,
-                       const char *filename);
+                       const char *embed, const char *filename);
 
  private:
   static uint32_t getColor(uint8_t color, const Config &config);
+  static void embedIcon(const char *embed, uint8_t *out, int stride,
+                        uint32_t color, uint32_t background, uint32_t scale);
   static void drawDot(uint8_t *out, int stride, uint32_t color,
                       uint32_t background, uint32_t scale, uint8_t mask);
   static void drawPattern(uint8_t *out, int stride, uint32_t color,

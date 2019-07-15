@@ -16,6 +16,7 @@ static char doc[] = "Generate stylish QR codes";
 static char args_doc[] = "message";
 static struct argp_option options[] = {
   {"config", 'c', "FILENAME", 0, "Name of config file"},
+  {"embed", 'e', "FILENAME", 0, "Image to embed in middle"},
   {"out", 'o', "FILENAME", 0, "Output filename (default qr.png)"},
   { 0 }
 };
@@ -23,6 +24,7 @@ static struct argp_option options[] = {
 struct arguments {
   const char *outfile;
   const char *config;
+  const char *embed;
   std::string message;
 };
 
@@ -31,6 +33,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
   switch (key) {
     case 'c':
       arguments->config = arg;
+      break;
+    case 'e':
+      arguments->embed = arg;
       break;
     case 'o':
       arguments->outfile = arg;
@@ -58,6 +63,7 @@ int main(int argc, char **argv) {
   struct arguments arguments;
   arguments.outfile = "qr.png";
   arguments.config = "config.json";
+  arguments.embed = nullptr;
   argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
 
@@ -94,5 +100,5 @@ int main(int argc, char **argv) {
   QRGrid grid;
   Bitmap bitmap = grid.generate(msg);
 
-  Decorator::decorate(bitmap, config, arguments.outfile);
+  Decorator::decorate(bitmap, config, arguments.embed, arguments.outfile);
 }

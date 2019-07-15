@@ -1,12 +1,13 @@
 {
-  "minECL": "L",
+  "minECL": "Q",
   "padding": 60,
-  "scale": 20,
+  "scale": 10,
   "background": "#ffffff",
   "pattern": "#8888aa",
   "align": "#880088",
   "code": "#222244",
+  "icon": "#880088",
   "style": "hvdots",
-  "patstyle": "rounded",
+  "patstyle": "circle",
   "corners": ["tl", "br"]
 }
