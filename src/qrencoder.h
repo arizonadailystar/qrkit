@@ -1,4 +1,4 @@
-/** @copyright 2019 Sean Kasun */
+/** @copyright 2019 Arizona Daily Star.  Developed by Sean Kasun. */
 
 #pragma once
 
