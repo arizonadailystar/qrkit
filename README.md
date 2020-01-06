@@ -22,7 +22,7 @@ In the `src` directory, run:
 make
 ```
 
-Upon successful compile, run:
+Upon successful compile, run in the parent directory:
 
 ```
 ./qrkit --usage
