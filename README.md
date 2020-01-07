@@ -30,17 +30,23 @@ Upon successful compile, run in the parent directory:
 
 To get a list of options.
 
+```
+-c filename  specifies the config file to use (it'll default to config.json if unspecified)
+-e filename  specifies the image to embed in the center (video.png, people.png, camera.png)
+-o filename  specifies the name of the png to generate (qr.png is default)
+```
+
 JSON Options
 ------------
 
 * minECL - A string containing one of "L", "M", "Q", or "H".  The minimum Error Correction Level.  Default is "L".
 * padding - An integer containing the number of pixels of padding around the QR code.  Default is 10.
-* scale - An integer containing the scale of each dot.  Default is 10.
-* background - A string containing a HTML hex color for the background.  Default is "#FFFFFF".
-* pattern - A string containing a HTML hex color for the pattern.  Default is "#000000".
-* align - A string containing a HTML hex color for the alignment.  Default is "#000000".
-* code - A string containing a HTML hex color for the code.  Default is "#000000".
+* scale - An integer containing the scale of each dot in pixels.  Default is 10.
+* background - A string containing a HTML hex color for the background and padding.  Default is "#FFFFFF".
+* pattern - A string containing a HTML hex color for the pattern (corner boxes).  Default is "#000000".
+* align - A string containing a HTML hex color for the alignment box in the lower-right corner.  Default is "#000000".
+* code - A string containing a HTML hex color for the code/data.  Default is "#000000".
 * icon - A string containing a HTML hex color for the center icon, if used.  Default is "#000000".
-* style - A string containing one of "none", "dots", "hdots", "vdots", or "hvdots".  Default is "none".
-* patstyle - A string containing one of "none", "rounded", "circle".  Default is "none".
+* style - A string containing one of "none" (square), "dots" (perfect dots), "hdots" (dots blended horizontally), "vdots" (dots blended vertically), or "hvdots" (dots blended both directions).  Default is "none".
+* patstyle - A string containing one of "none", "rounded" (rounded rectangle), "circle".  Default is "none".
 * corners - An array of strings containing one or more of "tl", "tr", "bl", "br".  Only used when patstyle is "rounded".  Default is none.
