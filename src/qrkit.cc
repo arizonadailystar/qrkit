@@ -10,14 +10,16 @@
 #include "config.h"
 #include "decorator.h"
 
-const char *argp_program_version = "qrkit 0.5";
-const char *argp_program_bug_address = "skasun@tucson.com";
+const char *argp_program_version = "qrkit 0.6";
+const char *argp_program_bug_address = "mobile@tucson.com";
 static char doc[] = "Generate stylish QR codes";
 static char args_doc[] = "message";
 static struct argp_option options[] = {
   {"config", 'c', "FILENAME", 0, "Name of config file"},
   {"embed", 'e', "FILENAME", 0, "Image to embed in middle"},
   {"out", 'o', "FILENAME", 0, "Output filename (default qr.png)"},
+  {"ppi_x", 1000, "INTEGER", 0, "Horizontal pixels per inch (ignored by default)"},
+  {"ppi_y", 1001, "INTEGER", 0, "Vertical pixels per inch (ignored by default)"},
   { 0 }
 };
 
@@ -26,6 +28,7 @@ struct arguments {
   const char *config;
   const char *embed;
   std::string message;
+  unsigned int ppi_x, ppi_y;
 };
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
@@ -39,6 +42,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
       break;
     case 'o':
       arguments->outfile = arg;
+      break;
+    case 1000:
+      arguments->ppi_x = atoi(arg);
+      break;
+    case 1001:
+      arguments->ppi_y = atoi(arg);
       break;
     case ARGP_KEY_ARG:
       if (!arguments->message.empty()) {
@@ -64,6 +73,8 @@ int main(int argc, char **argv) {
   arguments.outfile = "qr.png";
   arguments.config = "config.json";
   arguments.embed = nullptr;
+  arguments.ppi_x = 0;
+  arguments.ppi_y = 0;
   argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
 
@@ -100,5 +111,5 @@ int main(int argc, char **argv) {
   QRGrid grid;
   Bitmap bitmap = grid.generate(msg);
 
-  Decorator::decorate(bitmap, config, arguments.embed, arguments.outfile);
+  Decorator::decorate(bitmap, config, arguments.embed, arguments.outfile, arguments.ppi_x, arguments.ppi_y);
 }

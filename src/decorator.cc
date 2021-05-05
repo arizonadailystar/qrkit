@@ -8,7 +8,7 @@
 #include <cmath>
 
 void Decorator::decorate(const Bitmap &bitmap, const Config &config,
-                         const char *embed, const char *filename) {
+                         const char *embed, const char *filename, const unsigned int ppi_x, const unsigned int ppi_y) {
 
   int width = config.scale * bitmap.size + config.padding * 2;
   int height = config.scale * bitmap.size + config.padding * 2;
@@ -119,6 +119,7 @@ void Decorator::decorate(const Bitmap &bitmap, const Config &config,
   png_set_IHDR(png_ptr, info_ptr, width, height,
                8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
                PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+  if (ppi_x && ppi_y)  png_set_pHYs(png_ptr, info_ptr, ppi_x * 100.0 / 2.54, ppi_y * 100.0 / 2.54, PNG_RESOLUTION_METER);
   png_write_info(png_ptr, info_ptr);
   png_write_image(png_ptr, row_pointers);
   png_write_end(png_ptr, nullptr);

@@ -7,7 +7,7 @@
 class Decorator {
  public:
   static void decorate(const Bitmap &bitmap, const Config &config,
-                       const char *embed, const char *filename);
+                       const char *embed, const char *filename, const unsigned int ppi_x, const unsigned int ppi_y);
 
  private:
   static uint32_t getColor(uint8_t color, const Config &config);
