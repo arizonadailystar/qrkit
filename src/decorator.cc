@@ -10,11 +10,11 @@
 void Decorator::decorate(const Bitmap &bitmap, const Config &config,
                          const char *embed, const char *filename, const unsigned int ppi_x, const unsigned int ppi_y) {
 
-  int width = config.scale * bitmap.size + config.padding * 2;
-  int height = config.scale * bitmap.size + config.padding * 2;
+  int width = config.scale * bitmap.size + config.padding * 2 + config.border * 2;
+  int height = config.scale * bitmap.size + config.padding * 2 + config.border * 2;
   uint8_t *pixels = new uint8_t[width * 4 * height];
 
-  // first apply background color
+  // Apply background color.
   int offset = 0;
   for (int i = 0; i < width * height; i++) {
     pixels[offset++] = config.backgroundColor >> 16;
@@ -23,10 +23,42 @@ void Decorator::decorate(const Bitmap &bitmap, const Config &config,
     pixels[offset++] = 0xff;  // alpha
   }
 
+  // Apply border.
+  for (int j = 0; j < config.border; j++) {
+    for (int i = 0; i < width; i++) {
+      offset = j * width * 4 + i * 4;
+      pixels[offset++] = config.borderColor >> 16;
+      pixels[offset++] = (config.borderColor >> 8) & 0xff;
+      pixels[offset++] = config.borderColor & 0xff;
+      pixels[offset++] = 0xff;  // alpha
+    }
+
+    for (int i = 0; i < width; i++) {
+      offset = (height - j - 1) * width * 4 + i * 4;
+      pixels[offset++] = config.borderColor >> 16;
+      pixels[offset++] = (config.borderColor >> 8) & 0xff;
+      pixels[offset++] = config.borderColor & 0xff;
+      pixels[offset++] = 0xff;  // alpha
+    }
+
+    for (int i = config.border; i < height - config.border; i++) {
+      offset = i * width * 4 + j * 4;
+      pixels[offset++] = config.borderColor >> 16;
+      pixels[offset++] = (config.borderColor >> 8) & 0xff;
+      pixels[offset++] = config.borderColor & 0xff;
+      pixels[offset++] = 0xff;  // alpha
+
+      offset = i * width * 4 + (width - j - 1) * 4;
+      pixels[offset++] = config.borderColor >> 16;
+      pixels[offset++] = (config.borderColor >> 8) & 0xff;
+      pixels[offset++] = config.borderColor & 0xff;
+      pixels[offset++] = 0xff;  // alpha
+    }
+  }
+
   offset = 0;
   for (int y = 0; y < bitmap.size; y++) {
-    int outOffset = (y * config.scale + config.padding) * width * 4 +
-        config.padding * 4;
+    int outOffset = (y * config.scale + config.padding + config.border) * width * 4 + config.padding * 4 + config.border * 4;
     for (int x = 0; x < bitmap.size; x++) {
       if (bitmap.data[offset] != Color::BG &&
           bitmap.data[offset] != Color::Empty &&
@@ -77,22 +109,22 @@ void Decorator::decorate(const Bitmap &bitmap, const Config &config,
     }
   }
   // add corners.
-  drawPattern(pixels + config.padding * width * 4 + config.padding * 4,
+  drawPattern(pixels + config.padding * width * 4 + config.padding * 4 + config.border * width * 4 + config.border * 4,
               width * 4, config.patternColor, config.backgroundColor,
               config.scale, config.pattern, config.corners);
-  drawPattern(pixels + config.padding * width * 4 + config.padding * 4 +
+  drawPattern(pixels + config.padding * width * 4 + config.padding * 4 + config.border * width * 4 + config.border * 4 +
               (bitmap.size - 7) * config.scale * 4, width * 4,
               config.patternColor, config.backgroundColor,
               config.scale, config.pattern, config.corners);
-  drawPattern(pixels + ((bitmap.size - 7) * config.scale + config.padding) *
-              width * 4 + config.padding * 4, width * 4,
+  drawPattern(pixels + ((bitmap.size - 7) * config.scale + config.padding + config.border) *
+              width * 4 + config.padding * 4 + config.border * 4, width * 4,
               config.patternColor, config.backgroundColor,
               config.scale, config.pattern, config.corners);
 
 
   if (embed != nullptr) {
-    embedIcon(embed, pixels + (8 * config.scale + config.padding) * width * 4 +
-              (8 * config.scale + config.padding) * 4, width * 4,
+    embedIcon(embed, pixels + (8 * config.scale + config.padding + config.border) * width * 4 +
+              (8 * config.scale + config.padding + config.border) * 4, width * 4,
               config.iconColor, config.backgroundColor,
               (bitmap.size - 16) * config.scale);
   }

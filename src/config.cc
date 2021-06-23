@@ -30,6 +30,12 @@ Config::Config(std::shared_ptr<JSONData> json) {
         break;
     }
   }
+  if (json->has("border")) {
+    border = json->at("border")->asNumber();
+  }
+  if (json->has("bordercolor")) {
+    borderColor = parseColor(json->at("bordercolor")->asString());
+  }
   if (json->has("padding")) {
     padding = json->at("padding")->asNumber();
   }

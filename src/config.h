@@ -32,6 +32,8 @@ class Config {
   Config(std::shared_ptr<JSONData> json);
 
   ECL minECL = ECL::L;
+  uint32_t border = 5;
+  uint32_t borderColor = 0x00ffff;
   uint32_t padding = 10;
   uint32_t scale = 10;
   uint32_t backgroundColor = 0xffffff;
