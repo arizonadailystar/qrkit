@@ -8,7 +8,7 @@
 #include <cmath>
 
 void Decorator::decorate(const Bitmap &bitmap, const Config &config,
-                         const char *embed, const char *filename, const unsigned int ppi_x, const unsigned int ppi_y) {
+                         const char *embed, const char *filename, const bool gray, const unsigned int ppi_x, const unsigned int ppi_y) {
 
   int width = config.scale * bitmap.size + config.padding * 2 + config.border * 2;
   int height = config.scale * bitmap.size + config.padding * 2 + config.border * 2;
@@ -148,8 +148,18 @@ void Decorator::decorate(const Bitmap &bitmap, const Config &config,
   for (int row = 0; row < height; row++) {
     row_pointers[row] = pixels + row * 4 * width;
   }
+
+  // Calculate 8-bit gray values for each pixel and condense each row.
+  if (gray) {
+    for (int row = 0; row < height; row++) {
+      for (int col = 0; col < width; col++) {
+        row_pointers[row][col] = (png_byte)((double)row_pointers[row][col * 4] * 0.299 + (double)row_pointers[row][col * 4 + 1] * 0.587 + (double)row_pointers[row][col * 4 + 2] * 0.114);
+      }
+    }
+  }
+
   png_set_IHDR(png_ptr, info_ptr, width, height,
-               8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
+               8, (gray ? PNG_COLOR_TYPE_GRAY : PNG_COLOR_TYPE_RGB_ALPHA), PNG_INTERLACE_NONE,
                PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
   if (ppi_x && ppi_y)  png_set_pHYs(png_ptr, info_ptr, ppi_x * 100.0 / 2.54, ppi_y * 100.0 / 2.54, PNG_RESOLUTION_METER);
   png_write_info(png_ptr, info_ptr);

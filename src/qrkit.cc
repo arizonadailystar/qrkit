@@ -17,6 +17,7 @@ static char args_doc[] = "message";
 static struct argp_option options[] = {
   {"config", 'c', "FILENAME", 0, "Name of config file"},
   {"embed", 'e', "FILENAME", 0, "Image to embed in middle"},
+  {"gray", 'g', 0, 0, "Output final image as 8-bit grayscale, no alpha"},
   {"out", 'o', "FILENAME", 0, "Output filename (default qr.png)"},
   {"ppi_x", 1000, "INTEGER", 0, "Horizontal pixels per inch (ignored by default)"},
   {"ppi_y", 1001, "INTEGER", 0, "Vertical pixels per inch (ignored by default)"},
@@ -28,6 +29,7 @@ struct arguments {
   const char *config;
   const char *embed;
   std::string message;
+  bool gray;
   unsigned int ppi_x, ppi_y;
 };
 
@@ -39,6 +41,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
       break;
     case 'e':
       arguments->embed = arg;
+      break;
+    case 'g':
+      arguments->gray = true;
       break;
     case 'o':
       arguments->outfile = arg;
@@ -73,6 +78,7 @@ int main(int argc, char **argv) {
   arguments.outfile = "qr.png";
   arguments.config = "config.json";
   arguments.embed = nullptr;
+  arguments.gray = false;
   arguments.ppi_x = 0;
   arguments.ppi_y = 0;
   argp_parse(&argp, argc, argv, 0, 0, &arguments);
@@ -111,5 +117,5 @@ int main(int argc, char **argv) {
   QRGrid grid;
   Bitmap bitmap = grid.generate(msg);
 
-  Decorator::decorate(bitmap, config, arguments.embed, arguments.outfile, arguments.ppi_x, arguments.ppi_y);
+  Decorator::decorate(bitmap, config, arguments.embed, arguments.outfile, arguments.gray, arguments.ppi_x, arguments.ppi_y);
 }
